@@ -28,8 +28,8 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "dev": "next dev",
     "build": "next build",
+    "dev": "next dev",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
@@ -71,7 +71,8 @@
     "prettier-plugin-tailwindcss": "^0.8.0",
     "tailwindcss": "^4",
     "typescript": "^6",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.8",
+    "wrangler": "^4.98.0"
   },
   "overrides": {
     "postcss": "^8.5.10",
