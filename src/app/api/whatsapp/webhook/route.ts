@@ -182,6 +182,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
+  // Forward to RVMC Chatbot Cloudflare Worker
+  const forwardUrl = process.env.FORWARD_WHATSAPP_WEBHOOK_URL || 'https://rvmc-chatbot.dhanistadigital.workers.dev/api/whatsapp/webhook'
+  try {
+    await fetch(forwardUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(signature ? { 'x-hub-signature-256': signature } : {}),
+      },
+      body: rawBody,
+    })
+  } catch (err) {
+    console.error(`[webhook] failed to forward to ${forwardUrl}:`, err)
+  }
+
   // Process asynchronously so we can ack Meta within their timeout.
   processWebhook(body).catch((error) => {
     console.error('Error processing webhook:', error)
