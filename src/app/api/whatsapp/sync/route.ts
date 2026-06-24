@@ -136,7 +136,7 @@ export async function POST(request: Request) {
       }
 
       // 3. Insert the message locally
-      const senderType = msg.role === 'user' ? 'customer' : 'bot'
+      const senderType = msg.role === 'user' ? 'customer' : 'agent'
       const contentType = msg.message_type || 'text'
 
       const { error: insertMsgErr } = await supabase

@@ -1,0 +1,28 @@
+{
+  "apps": [
+    {
+      "app_name": "AutoWA",
+      "app_path": "d:/Visitor Management System/My Projects/AutoWA",
+      "domain": "wacrm-crm.vercel.app",
+      "supabase_project_ref": "sbitwtgtieyykzwqyljh",
+      "supabase_url": "https://sbitwtgtieyykzwqyljh.supabase.co",
+      "supabase_account": "rvmcjhs@gmail.com",
+      "account_alias": "RVMC",
+      "env_file": ".env.local",
+      "last_verified": "2026-06-24",
+      "notes": ""
+    },
+    {
+      "app_name": "RVMC Chatbot",
+      "app_path": "d:/Visitor Management System/My Projects/RVMC Chatbot",
+      "domain": "wa.jhansiproperty.com",
+      "supabase_project_ref": "gelixpchzweaqgcatuga",
+      "supabase_url": "https://gelixpchzweaqgcatuga.supabase.co",
+      "supabase_account": "",
+      "account_alias": "supabase-chatbot",
+      "env_file": ".dev.vars",
+      "last_verified": "2026-06-24",
+      "notes": "WhatsApp AI Real Estate Chatbot on Cloudflare Workers."
+    }
+  ]
+}
