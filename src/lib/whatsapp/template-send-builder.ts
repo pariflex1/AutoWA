@@ -97,8 +97,17 @@ function buildHeaderComponent(
   // image / video / document — Meta requires the media component on
   // every send. Prefer the caller's explicit override; fall back to
   // the template's stored sample.
+  //
+  // IMPORTANT: `template.header_handle` is a Resumable Upload handle
+  // (e.g. "4::abc...") used only during TEMPLATE CREATION. It is NOT
+  // a numeric media id and must never be sent as `image.id` in the
+  // send-message API — Meta rejects it with:
+  //   "violated JSON schema constraint 'type' for … image.id,
+  //    expected '[integer, null]'"
+  // Only an explicitly-supplied `headerMediaId` (a real uploaded-media
+  // integer id) is treated as an id here; everything else goes via link.
   const link = params.headerMediaUrl ?? template.header_media_url;
-  const id = params.headerMediaId ?? template.header_handle;
+  const id = params.headerMediaId; // never fall back to header_handle
   if (!link && !id) {
     throw new Error(
       `${headerType} header requires a media link or id at send time — set header_media_url on the template or pass headerMediaUrl/headerMediaId.`,

@@ -116,7 +116,11 @@ describe('buildSendComponents — header', () => {
     });
   });
 
-  it('prefers media id over url when both are available', () => {
+  it('uses header_media_url as link when header_handle is the only media info', () => {
+    // header_handle is a resumable-upload handle used only during template
+    // CREATION. It must NOT be forwarded as image.id on send (Meta requires
+    // integer|null for that field). When the template has a header_media_url
+    // alongside the handle, the URL (link) is used and the send succeeds.
     const components = buildSendComponents(
       row({
         header_type: 'document',
@@ -126,8 +130,22 @@ describe('buildSendComponents — header', () => {
     );
     expect(components[0]).toEqual({
       type: 'header',
-      parameters: [{ type: 'document', document: { id: '4::aBc' } }],
+      parameters: [{ type: 'document', document: { link: 'https://x.com/doc.pdf' } }],
     });
+  });
+
+  it('throws on media header with only header_handle and no header_media_url', () => {
+    // header_handle alone is not a valid send-time media source — it throws
+    // rather than forwarding a non-integer string as image.id.
+    expect(() =>
+      buildSendComponents(
+        row({
+          header_type: 'document',
+          header_handle: '4::aBc',
+          // no header_media_url
+        }),
+      ),
+    ).toThrow(/requires a media link or id/);
   });
 
   it('throws on media header with no link OR id available', () => {
@@ -136,6 +154,7 @@ describe('buildSendComponents — header', () => {
     ).toThrow(/requires a media link or id/);
   });
 });
+
 
 describe('buildSendComponents — buttons', () => {
   it('omits URL buttons without variables (template carries the URL)', () => {
