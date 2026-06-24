@@ -186,21 +186,42 @@ export default function InboxPage() {
   const handleMessageEvent = useCallback(
     (event: { eventType: string; new: Message; old: Partial<Message> }) => {
       const newMsg = event.new;
+      console.log("[handleMessageEvent] Called with event:", event, "activeConversation:", activeConversation);
 
       if (event.eventType === "INSERT") {
         // Add to messages if it belongs to active conversation
-        if (
-          activeConversation &&
-          newMsg.conversation_id === activeConversation.id
-        ) {
+        const isForActiveConv = activeConversation && newMsg.conversation_id === activeConversation.id;
+        console.log(`[handleMessageEvent] Is message for active conversation? ${isForActiveConv}. Message conv_id: ${newMsg.conversation_id}, Active conv_id: ${activeConversation?.id}`);
+
+        if (isForActiveConv) {
           setMessages((prev) => {
             // Avoid duplicates
-            if (prev.some((m) => m.id === newMsg.id)) return prev;
-            // Replace optimistic message if it exists
-            const withoutOptimistic = prev.filter(
-              (m) => !m.id.startsWith("temp-")
-            );
-            return [...withoutOptimistic, newMsg];
+            if (prev.some((m) => m.id === newMsg.id)) {
+              console.log("[handleMessageEvent] Message already in state, skipping.");
+              return prev;
+            }
+
+            // Only swap out an optimistic (temp-) bubble when the incoming real
+            // message was sent by the agent — i.e. it's the DB row that replaces
+            // the bubble we created in handleSend. Customer and bot messages must
+            // never strip the optimistic bubble (that would make the agent's
+            // in-flight message disappear until the API response lands).
+            if (newMsg.sender_type === "agent") {
+              // Find the latest temp message in this conversation to replace.
+              const lastTempIdx = prev.map((m) => m.id).lastIndexOf(
+                prev.filter((m) => m.id.startsWith("temp-")).slice(-1)[0]?.id ?? ""
+              );
+              if (lastTempIdx >= 0) {
+                const updated = prev.slice();
+                updated[lastTempIdx] = newMsg;
+                console.log("[handleMessageEvent] Replaced optimistic agent message with real row.");
+                return updated;
+              }
+            }
+
+            // For customer / bot messages, or when there's no temp bubble, just append.
+            console.log("[handleMessageEvent] Appending message to state.");
+            return [...prev, newMsg];
           });
         }
 
@@ -210,6 +231,7 @@ export default function InboxPage() {
         // knownConvIdsRef for why a closure flag inside the updater would
         // always read false here.
         if (knownConvIdsRef.current.has(newMsg.conversation_id)) {
+          console.log("[handleMessageEvent] Conversation already known, updating preview.");
           setConversations((prev) =>
             sortConversations(
               prev.map((c) =>
@@ -236,11 +258,13 @@ export default function InboxPage() {
           // the row surfaces with its `contact` joined; the conv-UPDATE
           // event the webhook emits right after the message INSERT will
           // converge state when it arrives.
+          console.log("[handleMessageEvent] Conversation unknown, triggering hydrateConversation.");
           hydrateConversation(newMsg.conversation_id);
         }
       }
 
       if (event.eventType === "UPDATE") {
+        console.log("[handleMessageEvent] Message updated, updating status in state.");
         // Update message status
         setMessages((prev) =>
           prev.map((m) => (m.id === newMsg.id ? { ...m, ...newMsg } : m))
@@ -371,6 +395,29 @@ export default function InboxPage() {
     };
   }, []);
 
+  const triggerSync = useCallback(async () => {
+    try {
+      const res = await fetch("/api/whatsapp/sync", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.syncedCount > 0) {
+          setResyncToken((n) => n + 1);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to sync chatbot messages:", err);
+    }
+  }, []);
+
+  // Poll for new chatbot replies every 5 seconds
+  useEffect(() => {
+    // Initial sync on mount
+    triggerSync();
+
+    const interval = setInterval(triggerSync, 5000);
+    return () => clearInterval(interval);
+  }, [triggerSync]);
+
   /**
    * Manual refresh trigger for the thread-header refresh button.
    * Bumps the same resyncToken the reconnect / visibility paths use,
@@ -378,8 +425,9 @@ export default function InboxPage() {
    * separate code path to keep in sync.
    */
   const handleManualRefresh = useCallback(() => {
+    triggerSync();
     setResyncToken((n) => n + 1);
-  }, []);
+  }, [triggerSync]);
 
   const handleConversationsLoaded = useCallback(
     (loaded: Conversation[]) => {

@@ -50,6 +50,11 @@ export function useRealtime({
         "postgres_changes",
         { event: "*", schema: "public", table: "messages" },
         (payload) => {
+          console.log("[useRealtime] Received message change event:", {
+            eventType: payload.eventType,
+            new: payload.new,
+            old: payload.old,
+          });
           onMessageRef.current?.({
             eventType: payload.eventType as RealtimeEvent<Message>["eventType"],
             new: payload.new as Message,
@@ -61,6 +66,11 @@ export function useRealtime({
         "postgres_changes",
         { event: "*", schema: "public", table: "conversations" },
         (payload) => {
+          console.log("[useRealtime] Received conversation change event:", {
+            eventType: payload.eventType,
+            new: payload.new,
+            old: payload.old,
+          });
           onConversationRef.current?.({
             eventType: payload.eventType as RealtimeEvent<Conversation>["eventType"],
             new: payload.new as Conversation,
@@ -69,12 +79,14 @@ export function useRealtime({
         }
       )
       .subscribe((status) => {
+        console.log(`[useRealtime] Subscription status for ${channelName}: ${status}`);
         setIsConnected(status === "SUBSCRIBED");
       });
 
     channelRef.current = channel;
 
     return () => {
+      console.log(`[useRealtime] Unsubscribing from ${channelName}`);
       supabase.removeChannel(channel);
       channelRef.current = null;
       setIsConnected(false);

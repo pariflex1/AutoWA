@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createChatbotClient } from '@/lib/supabase/server'
 import { sendTextMessage, sendTemplateMessage } from '@/lib/whatsapp/meta-api'
 import { decrypt, encrypt, isLegacyFormat } from '@/lib/whatsapp/encryption'
 import { supabaseAdmin } from '@/lib/flows/admin-client'
@@ -321,6 +321,25 @@ export async function POST(request: Request) {
       })
       .select()
       .single()
+
+    // Sync agent reply to the Chatbot's conversations table (best effort)
+    try {
+      const chatbotSupabase = await createChatbotClient()
+      const { error: chatbotSyncError } = await chatbotSupabase
+        .from('conversations')
+        .insert({
+          phone: sanitizedPhone,
+          role: 'assistant',
+          message: content_text || `[${message_type}]`,
+          message_type: message_type === 'template' ? 'template' : 'text',
+          created_at: new Date().toISOString()
+        })
+      if (chatbotSyncError) {
+        console.error('Chatbot DB sync failed:', chatbotSyncError.message)
+      }
+    } catch (chatbotErr) {
+      console.error('Failed to sync agent reply to chatbot database:', chatbotErr)
+    }
 
     if (msgError) {
       console.error('Error inserting sent message:', msgError)
